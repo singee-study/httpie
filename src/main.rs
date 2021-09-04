@@ -1,9 +1,10 @@
 use anyhow::{anyhow, Result};
 use clap::{AppSettings, Clap};
-use reqwest::{Url, Client, Response};
+use reqwest::{Url, header, Client, Response};
 use std::str::FromStr;
 use std::collections::HashMap;
 use colored::*;
+use mime::{Mime, APPLICATION_JSON};
 
 // 定义 HTTPie 的 CLI 的主入口，它包含若干个子命令
 // 下面 /// 的注释是文档，clap 会将其作为 CLI 的帮助
@@ -109,11 +110,39 @@ fn print_response_line(resp: &Response) {
     println!("{}", (format!("{:?} {}", resp.version(), resp.status())).blue());
 }
 
+fn print_response_headers(resp: &Response) {
+    let headers = resp.headers();
+
+    for (name, value) in headers {
+        println!("{}: {:?}", name.to_string().green(), value);
+    }
+}
+
+fn print_body(m: Option<Mime>, body: &str) {
+    if matches!(m, Some(v) if v == APPLICATION_JSON) {
+        let j_text = jsonxf::pretty_print(body);
+        if let Ok(j_text) = j_text {
+            println!("{}", j_text.cyan());
+            return;
+        }
+    }
+
+    println!("{}", body);
+}
+
 async fn print_response(resp: Response) -> Result<()> {
     print_response_line(&resp);
-    println!("{}", resp.text().await?);
+    print_response_headers(&resp);
+
+    let ct = get_content_type(&resp);
+    let body = resp.text().await?;
+    print_body(ct, &body);
 
     Ok(())
+}
+
+fn get_content_type(resp: &Response) -> Option<Mime> {
+    resp.headers().get(header::CONTENT_TYPE).map(|v| v.to_str().unwrap().parse().unwrap())
 }
 
 #[tokio::main]
