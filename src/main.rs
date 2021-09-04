@@ -56,7 +56,7 @@ fn parse_url(s: &str) -> Result<String> {
     Ok(s.into())
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct KvPair {
     k: String,
     v: String,
@@ -145,6 +145,29 @@ fn get_content_type(resp: &Response) -> Option<Mime> {
     resp.headers().get(header::CONTENT_TYPE).map(|v| v.to_str().unwrap().parse().unwrap())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_url_works() {
+        assert!(parse_url("").is_err());
+        assert!(parse_url("abc").is_err());
+        assert!(parse_url("baidu.com").is_err());
+        assert!(parse_url("http://baidu.com").is_ok());
+        assert!(parse_url("http://baidu.com/").is_ok());
+        assert!(parse_url("https://baidu.com/a/bc").is_ok());
+    }
+
+    #[test]
+    fn parse_kv_pair_works() {
+        assert!(parse_kv_pair("").is_err());
+        assert!(parse_kv_pair("a").is_err());
+        assert_eq!(parse_kv_pair("a=").ok(), Some(KvPair { k: "a".to_string(), v: "".to_string() }));
+        assert_eq!(parse_kv_pair("a=b").ok(), Some(KvPair { k: "a".to_string(), v: "b".to_string() }));
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let opts: Opts = Opts::parse();
@@ -159,4 +182,3 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
-
