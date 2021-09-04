@@ -1,8 +1,9 @@
 use anyhow::{anyhow, Result};
 use clap::{AppSettings, Clap};
-use reqwest::{Url, Client};
+use reqwest::{Url, Client, Response};
 use std::str::FromStr;
 use std::collections::HashMap;
+use colored::*;
 
 // 定义 HTTPie 的 CLI 的主入口，它包含若干个子命令
 // 下面 /// 的注释是文档，clap 会将其作为 CLI 的帮助
@@ -81,7 +82,7 @@ fn parse_kv_pair(s: &str) -> Result<KvPair> {
 async fn get(client: Client, args: &Get) -> Result<()> {
     let resp = client.get(&args.url).send().await?;
 
-    println!("{}", resp.text().await?);
+    print_response(resp).await?;
 
     Ok(())
 }
@@ -99,6 +100,17 @@ async fn post(client: Client, args: &Post) -> Result<()> {
 
     let resp = client.post(&args.url).json(&body).send().await?;
 
+    print_response(resp).await?;
+
+    Ok(())
+}
+
+fn print_response_line(resp: &Response) {
+    println!("{}", (format!("{:?} {}", resp.version(), resp.status())).blue());
+}
+
+async fn print_response(resp: Response) -> Result<()> {
+    print_response_line(&resp);
     println!("{}", resp.text().await?);
 
     Ok(())
